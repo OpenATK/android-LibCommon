@@ -1,4 +1,6 @@
-package edu.purdue.libcommon.provider;
+package com.openatk.libcommon.provider;
+
+import com.openatk.libcommon.db.RockDB;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -10,31 +12,36 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import edu.purdue.libcommon.db.NotesDB;
 
 /*
- * The provider which manages the "field"
+ * The provider which manages the "rocks"
  * 
  * This should not be used directly but rather
- * accessed via the LibCommon Note and Object class.
+ * accessed via the LibWaterApps Rock class.
  */
-public class NotesProvider extends ContentProvider {
+public class RockProvider extends ContentProvider {
 	
-	private NotesDB mDb;
+	private RockDB db;
 	private static final UriMatcher MATCHER;
-	private static final int NOTES = 1;
-	private static final int NOTE_ID = 2;
+	private static final int ROCKS = 1;
+	private static final int ROCKS_ID = 2;
 
 	/* 
 	 * These are the constants which identifies the provider and its data
 	 */
 	public static final class Constants implements BaseColumns {
-		public static final String AUTHORITY = "edu.purdue.libcommon.notesProvider";
-		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/notes");
-		public static final String TABLE="notes";
+		public static final String AUTHORITY = "com.openatk.libcommon.provider";
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/rocks");
+		public static final String TABLE="rocks";
 		public static final String DEFAULT_SORT_ORDER="_id";
-		public static final String COLOR = "color";
+		public static final String TRELLO_ID = "trello_id";
+		public static final String LAT = "lat";
+		public static final String LON = "lon";
+		public static final String PICKED = "picked";
 		public static final String COMMENTS = "comments";
+		public static final String PICTURE = "picture";
+		public static final String HAS_CHANGED = "has_changed";
+		public static final String DATE_CHANGED = "date_changed";
 		public static final String DELETED = "deleted";
 	}
 	
@@ -43,8 +50,8 @@ public class NotesProvider extends ContentProvider {
 	 */
 	static {
 		MATCHER=new UriMatcher(UriMatcher.NO_MATCH);
-		MATCHER.addURI("edu.purdue.libcommon.notesProvider", "notes", NOTES);
-		MATCHER.addURI("edu.prudue.libcommon.notesProvider", "notes/#", NOTE_ID);
+		MATCHER.addURI("com.openatk.libcommon.RockProvider", "rocks", ROCKS);
+		MATCHER.addURI("com.openatk.libcommon.RockProvider", "rocks/#", ROCKS_ID);
 	}
 	
 	/*
@@ -54,12 +61,12 @@ public class NotesProvider extends ContentProvider {
 	 */
 	@Override
 	public boolean onCreate() {
-		/* Get hold of the field DB
-		 * This is fast because FieldDB will hold off working with the DB until it is used
+		/* Get hold of the rock DB
+		 * This is fast because RockDB will hold off working with the DB until it is used
 		 */
-		mDb=new NotesDB(getContext());
+		db=new RockDB(getContext());
 		
-		return ((mDb == null) ? false : true);
+		return ((db == null) ? false : true);
 	}
 	
 	/*
@@ -69,12 +76,12 @@ public class NotesProvider extends ContentProvider {
 	public String getType(Uri url) {
 		String type;
 		switch(MATCHER.match(url)) {
-			case NOTES:
-				type = "vnd.libcommon.cursor.dir/constant";
+			case ROCKS:
+				type = "vnd.libwaterapps.cursor.dir/constant";
 			break;
 			
 			default:
-				type = "vnd.libcommon.cursor.item/constant";
+				type = "vnd.libwaterapps.cursor.item/constant";
 			break;
 		}
 		
@@ -82,13 +89,13 @@ public class NotesProvider extends ContentProvider {
 	}
 	
 	/*
-	 * Used to get a field from the provider. See ContentProvider in android docs for usage
+	 * Used to get a rock from the provider. See ContentProvider in android docs for usage
 	 */
 	@Override
 	public Cursor query(Uri url, String[] projection, String selection,
 						String[] selectionArgs, String sort) {
 		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-	
+		
 		qb.setTables(Constants.TABLE);
 		
 		String orderBy;
@@ -99,18 +106,17 @@ public class NotesProvider extends ContentProvider {
 			orderBy=sort;
 		}
 		
-		Cursor c = qb.query(mDb.getReadableDatabase(), projection, selection, selectionArgs,
+		Cursor c = qb.query(db.getReadableDatabase(), projection, selection, selectionArgs,
 				null, null, orderBy);
-	
 		return c;
 	}
 	
 	/*
-	 * Used to add a field to the provider. See ContentProvider in android docs for usage
+	 * Used to add a rock to the provider. See ContentProvider in android docs for usage
 	 */
 	@Override
 	public Uri insert(Uri url, ContentValues initialValues) {
-		long rowID = mDb.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
+		long rowID = db.getWritableDatabase().insert(Constants.TABLE, Constants._ID, initialValues);
 		
 		// If we got a rowID, get the URI and tell the world
 		if(rowID > 0) {
@@ -122,28 +128,26 @@ public class NotesProvider extends ContentProvider {
 		}
 		
 		throw new SQLException("Failed to insert row into " + url);
-		
 	}
 	
 	/*
-	 * Used to update a filed in the provider. See ContentProvider in android docs for usage
+	 * Used to update a rock in the provider. See ContentProvider in android docs for usage
 	 */
 	@Override
 	public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
-		int count=mDb.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
+		int count=db.getWritableDatabase().update(Constants.TABLE, values, where, whereArgs);
 		
 		// Tell the world of the update
 		getContext().getContentResolver().notifyChange(url, null);
-		
 		return count;
 	}
 	
 	/*
-	 * Used to delete a field from the provider. See ContentProvider in android docs for usage
+	 * Used to delete a rock from the provider. See ContentProvider in android docs for usage
 	 */
 	@Override
 	public int delete(Uri url, String where, String[] whereArgs) {
-		int count=mDb.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
+		int count=db.getWritableDatabase().delete(Constants.TABLE, where, whereArgs);
 		
 		// Tell the world of the delete
 		getContext().getContentResolver().notifyChange(url, null);

@@ -1,15 +1,17 @@
-package edu.purdue.libcommon.db;
+package com.openatk.libcommon.db;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
+
+import com.openatk.libcommon.provider.RockProvider;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import edu.purdue.libcommon.provider.RockProvider;
 
 /*
  * Manages the SQLite database for the RockProvider
@@ -17,16 +19,15 @@ import edu.purdue.libcommon.provider.RockProvider;
  */
 public class RockDB extends SQLiteOpenHelper {
 	// A tool help keep dates formated correctly in the database
-	private static SimpleDateFormat mDateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	private static final String mDbName = "rocks";
-	private static final int mVersion = 3;
+	private static SimpleDateFormat dateFormater = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
+	private static final String db_name = "rocks";
+	private static final int version = 3;
 	
 	/* DB uses a singleton pattern */
 	public RockDB(Context context) {
-		super(context, mDbName, null, mVersion);
-		
+		super(context, db_name, null, version);
 		// We always store and use UTC time
-		mDateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
+		dateFormater.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
 	
 	/*
@@ -37,14 +38,14 @@ public class RockDB extends SQLiteOpenHelper {
 		db.execSQL("CREATE TABLE " + RockProvider.Constants.TABLE + "(" +
 				RockProvider.Constants._ID + " INTEGER PRIMARY KEY," +
 				RockProvider.Constants.TRELLO_ID + " TEXT," +
-				RockProvider.Constants.LAT + " INTEGER," +
-				RockProvider.Constants.LON + " INTEGER," +
+				RockProvider.Constants.LAT + " REAL," +
+				RockProvider.Constants.LON + " REAL," +
 				RockProvider.Constants.PICKED + " TEXT," +
 				RockProvider.Constants.COMMENTS + " TEXT," +
 				RockProvider.Constants.PICTURE + " TEXT," +
-				RockProvider.Constants.UPDATE_TIME + " TEXT," +
-				RockProvider.Constants.TRELLO_PULL_TIME + " TEXT," + 
-				RockProvider.Constants.DELETED + " TEXT)");
+				RockProvider.Constants.HAS_CHANGED + " INTEGER," +
+				RockProvider.Constants.DATE_CHANGED + " TEXT," + 
+				RockProvider.Constants.DELETED + " INTEGER)");
 	}
 	
 	/*
@@ -63,23 +64,27 @@ public class RockDB extends SQLiteOpenHelper {
 	/*
 	 * Takes in a date and returns it in a string format
 	 */
-	public static String dateFormat(Date date) {
-		return RockDB.mDateFormater.format(date);
+	public static String dateToString(Date date) {
+		if(date == null){
+			return null;
+		}
+		return RockDB.dateFormater.format(date);
 	}
 	
 	/*
 	 * Takes in a string formated by dateFormat() and returns the
 	 * original date.
 	 */
-	public static Date dateParse(String date) {
+	public static Date stringToDate(String date) {
+		if(date == null){
+			return null;
+		}
 		Date d;
-		
 		try {
-			d = RockDB.mDateFormater.parse(date);
+			d = RockDB.dateFormater.parse(date);
 		} catch (ParseException e) {
 			d = new Date(0);
 		}
-		
 		return d;
 	}
 }
